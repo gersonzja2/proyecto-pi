@@ -3,6 +3,7 @@ import sys
 from src.Constantes import *
 from src.Logica.Logica import ModeloJuego
 from src.Interfaz.Interfaz import VistaJuego
+from src.SongBank import *
 
 class ControladorJuego:
     """(CONTROLADOR) Gestiona el bucle principal y los eventos de usuario."""
@@ -34,7 +35,6 @@ class ControladorJuego:
 
 # --- Punto de Entrada Principal ---
 if __name__ == '__main__':
-    pygame.init()
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Unir Puntos y Crear Triángulos")
     controlador = ControladorJuego(pantalla)
