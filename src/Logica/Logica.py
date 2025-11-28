@@ -1,6 +1,6 @@
 import itertools
 import random
-from src.Constantes import *
+from utilities.Constantes import *
 
 class Punto:
     """(MODELO) Representa un punto en el tablero con sus coordenadas y posición en la grilla."""
@@ -94,6 +94,22 @@ class ModeloJuego:
     def jugador_actual(self):
         return self.jugadores[self.turno_actual_idx]
 
+    @property
+    def ganador(self):
+        """Determina el ganador del juego basado en la puntuación."""
+        if not self.juego_terminado:
+            return None
+        
+        p1_score = self.jugadores[0].puntuacion
+        p2_score = self.jugadores[1].puntuacion
+
+        if p1_score > p2_score:
+            return self.jugadores[0]
+        elif p2_score > p1_score:
+            return self.jugadores[1]
+        else:
+            return None # Empate
+
     def _inicializar_tablero(self):
         espacio_x = (ANCHO - 2 * MARGEN_X) / (COLUMNAS - 1)
         espacio_y = (ALTO - 2 * MARGEN_Y) / (FILAS - 1)
@@ -126,17 +142,15 @@ class ModeloJuego:
                 if len(self.puntos_seleccionados) == 2:
                     p1, p2 = self.puntos_seleccionados
                     nueva_linea = Linea(p1, p2, self.jugador_actual)
-
-                    if nueva_linea not in self.lineas_dibujadas:
+                    
+                    if self._es_linea_valida(p1, p2):
                         self.lineas_dibujadas.add(nueva_linea)
                         self.jugador_actual.lineas.append(nueva_linea)
                         self.tiros_restantes -= 1
-                        era_ultimo_tiro = self.tiros_restantes == 0
                         
-                        puntos_ganados = self._comprobar_nuevos_triangulos()
-                        if puntos_ganados > 0:
-                            self.jugador_actual.puntuacion += puntos_ganados
-                            self.tiros_restantes += puntos_ganados
+                        se_formo_triangulo = self._comprobar_nuevos_triangulos()
+                        if se_formo_triangulo:
+                            self.tiros_restantes += 1
                         
                         if self.tiros_restantes == 0:
                             self._cambiar_turno()
@@ -144,23 +158,73 @@ class ModeloJuego:
                     self.puntos_seleccionados = []
                 break
 
+    def _hay_movimientos_posibles(self):
+        """Comprueba si queda alguna línea válida por trazar en el tablero."""
+        for p1, p2 in itertools.combinations(self.puntos, 2):
+            if self._es_linea_valida(p1, p2):
+                # Encontró al menos un movimiento posible
+                return True
+        return False
+
+    def _es_linea_valida(self, p1, p2):
+        """Verifica si una línea entre p1 y p2 es válida para ser dibujada."""
+        # 1. La línea no debe existir previamente.
+        if Linea(p1, p2, self.jugador_actual) in self.lineas_dibujadas:
+            return False
+
+        # 2. Los puntos deben ser adyacentes (horizontal, vertical o diagonal de 1 paso).
+        es_adyacente = abs(p1.fila - p2.fila) <= 1 and abs(p1.col - p2.col) <= 1
+        if not es_adyacente or (p1.fila == p2.fila and p1.col == p2.col):
+            return False
+
+        # 3. Si es una línea diagonal, la diagonal opuesta no debe existir.
+        es_diagonal = abs(p1.fila - p2.fila) == 1 and abs(p1.col - p2.col) == 1
+        if es_diagonal:
+            # Encontrar los otros dos puntos del cuadrado 2x2.
+            p3 = next((p for p in self.puntos if p.fila == p1.fila and p.col == p2.col), None)
+            p4 = next((p for p in self.puntos if p.fila == p2.fila and p.col == p1.col), None)
+
+            if p3 and p4:
+                # Crear la línea diagonal opuesta y verificar si existe.
+                linea_opuesta = Linea(p3, p4, None) # El jugador no importa para la comprobación.
+                if linea_opuesta in self.lineas_dibujadas:
+                    return False
+
+        return True
+
     def _comprobar_nuevos_triangulos(self):
+        """Comprueba si se han formado nuevos triángulos, actualiza la puntuación y devuelve si se formó alguno."""
         puntos_ganados_en_turno = 0
         for triangulo in self.triangulos_posibles:
             if triangulo.comprobar_completado(self.lineas_dibujadas):
                 triangulo.jugador_propietario = self.jugador_actual
                 self.triangulos_completados.append(triangulo)
                 puntos_ganados_en_turno += 1
-        
-        self.triangulos_posibles = [t for t in self.triangulos_posibles if not t.jugador_propietario]
-        
-        if not self.triangulos_posibles:
-            self.juego_terminado = True
 
-        return puntos_ganados_en_turno
+        if puntos_ganados_en_turno > 0:
+            self.jugador_actual.puntuacion += puntos_ganados_en_turno
+            self.triangulos_posibles = [t for t in self.triangulos_posibles if not t.jugador_propietario]
+            return True
+        return False
 
     def _cambiar_turno(self):
         if self.juego_terminado:
             return
+            
         self.turno_actual_idx = (self.turno_actual_idx + 1) % len(self.jugadores)
+        self.lanzar_dado()
+
+    def reiniciar(self):
+        """Reinicia el estado del juego a su configuración inicial."""
+        self.jugadores = [
+            Jugador("Jugador 1", COLOR_JUGADOR_1),
+            Jugador("Jugador 2", COLOR_JUGADOR_2)
+        ]
+        self.turno_actual_idx = 0
+        self.lineas_dibujadas = set()
+        self.triangulos_posibles = []
+        self.triangulos_completados = []
+        self.puntos_seleccionados = []
+        self.juego_terminado = False
+        self._generar_triangulos_posibles()
         self.lanzar_dado()

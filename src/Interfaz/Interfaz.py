@@ -1,5 +1,5 @@
 import pygame
-from src.Constantes import *
+from utilities.Constantes import *
 
 class VistaJuego:
     """(VISTA) Se encarga de dibujar el estado del juego en la pantalla."""
@@ -7,6 +7,7 @@ class VistaJuego:
         self.pantalla = pantalla
         self.fuente = pygame.font.Font(None, 36)
         self.fuente_grande = pygame.font.Font(None, 50)
+        self.rect_boton_terminar = pygame.Rect(ANCHO / 2 - 100, 20, 200, 40)
 
     def dibujar(self, modelo):
         """Dibuja todos los elementos del juego basándose en el modelo."""
@@ -15,9 +16,6 @@ class VistaJuego:
         self._dibujar_lineas(modelo)
         self._dibujar_puntos(modelo)
         self._dibujar_ui(modelo)
-
-        if modelo.juego_terminado:
-            self._dibujar_fin_juego(modelo)
 
         pygame.display.flip()
 
@@ -63,28 +61,26 @@ class VistaJuego:
         texto_dado = self.fuente.render(f"Dado: {modelo.dado_valor} | Tiros restantes: {modelo.tiros_restantes}", True, jugador_actual.color)
         rect_dado = texto_dado.get_rect(midbottom=(ANCHO / 2, ALTO - 50))
         self.pantalla.blit(texto_dado, rect_dado)
-
-    def _dibujar_fin_juego(self, modelo):
-        p1_score = modelo.jugadores[0].puntuacion
-        p2_score = modelo.jugadores[1].puntuacion
         
-        if p1_score > p2_score:
-            msg = f"¡Gana {modelo.jugadores[0].nombre}!"
-            color = modelo.jugadores[0].color
-        elif p2_score > p1_score:
-            msg = f"¡Gana {modelo.jugadores[1].nombre}!"
-            color = modelo.jugadores[1].color
+        # Botón de terminar partida
+        pygame.draw.rect(self.pantalla, (200, 50, 50), self.rect_boton_terminar)
+        pygame.draw.rect(self.pantalla, (255, 255, 255), self.rect_boton_terminar, 2)
+        texto_boton = self.fuente.render("Terminar Partida", True, (255, 255, 255))
+        rect_texto_boton = texto_boton.get_rect(center=self.rect_boton_terminar.center)
+        self.pantalla.blit(texto_boton, rect_texto_boton)
+
+    def dibujar_fin_juego(self, ganador):
+        """Dibuja la pantalla de fin de juego."""
+        self.pantalla.fill((0, 0, 0)) # NEGRO
+        if ganador:
+            msg = f"¡Gana {ganador.nombre}!"
+            color = ganador.color
         else:
             msg = "¡Es un empate!"
             color = COLOR_TEXTO
-        
-        texto_fin = self.fuente_grande.render(msg, True, color)
-        rect_fin = texto_fin.get_rect(center=(ANCHO / 2, ALTO / 2))
-        
-        # Fondo semitransparente para el texto final
-        s = pygame.Surface((ANCHO, ALTO))
-        s.set_alpha(128)
-        s.fill((255,255,255))
-        self.pantalla.blit(s, (0,0))
-
+        texto_fin = self.fuente_grande.render("Juego Terminado", True, (255, 255, 255)) # BLANCO
+        rect_fin = texto_fin.get_rect(center=(ANCHO / 2, ALTO / 2 - 50))
+        texto_resultado = self.fuente.render(msg, True, color)
+        rect_resultado = texto_resultado.get_rect(center=(ANCHO / 2, ALTO / 2 + 20))
         self.pantalla.blit(texto_fin, rect_fin)
+        self.pantalla.blit(texto_resultado, rect_resultado)
