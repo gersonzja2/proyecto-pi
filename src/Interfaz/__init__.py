@@ -1,0 +1,1 @@
+print("Interfaz package initialized.")
