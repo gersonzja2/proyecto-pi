@@ -45,14 +45,13 @@ class Triangulo:
         }
         self.jugador_propietario = None
 
-    def comprobar_completado(self, lineas_jugador):
-        """Verifica si un jugador ha completado este triángulo."""
+    def comprobar_completado(self, lineas_dibujadas_totales):
+        """Verifica si este triángulo ha sido completado con el conjunto total de líneas."""
         if self.jugador_propietario:
             return False
-
-        lineas_jugador_set = {frozenset(linea.puntos) for linea in lineas_jugador}
         
-        if self.lineas_necesarias.issubset(lineas_jugador_set):
+        lineas_dibujadas_set = {frozenset(linea.puntos) for linea in lineas_dibujadas_totales}
+        if self.lineas_necesarias.issubset(lineas_dibujadas_set):
             return True
         return False
 
@@ -132,10 +131,12 @@ class ModeloJuego:
                         self.lineas_dibujadas.add(nueva_linea)
                         self.jugador_actual.lineas.append(nueva_linea)
                         self.tiros_restantes -= 1
+                        era_ultimo_tiro = self.tiros_restantes == 0
                         
                         puntos_ganados = self._comprobar_nuevos_triangulos()
                         if puntos_ganados > 0:
                             self.jugador_actual.puntuacion += puntos_ganados
+                            self.tiros_restantes += puntos_ganados
                         
                         if self.tiros_restantes == 0:
                             self._cambiar_turno()
@@ -146,7 +147,7 @@ class ModeloJuego:
     def _comprobar_nuevos_triangulos(self):
         puntos_ganados_en_turno = 0
         for triangulo in self.triangulos_posibles:
-            if triangulo.comprobar_completado(self.jugador_actual.lineas):
+            if triangulo.comprobar_completado(self.lineas_dibujadas):
                 triangulo.jugador_propietario = self.jugador_actual
                 self.triangulos_completados.append(triangulo)
                 puntos_ganados_en_turno += 1
